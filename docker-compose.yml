@@ -1,0 +1,36 @@
+# API + Redis in containers. MongoDB runs directly on the host for now and is
+# reached via host.docker.internal (set MONGO_URI accordingly in .env).
+services:
+  api:
+    image: ${API_IMAGE:-kiranabook-api:local}
+    build: .
+    container_name: kiranabook-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${PORT:-4000}:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: kiranabook-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
